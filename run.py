@@ -16,7 +16,7 @@ data = {
 df = pd.DataFrame(data)
 
 # Excel-Datei erstellen
-file_path = 'dynamic_excel_dashboard_with_slicers.xlsx'
+file_path = 'professional_excel_dashboard.xlsx'
 wb = xw.Book()  # Neue Arbeitsmappe erstellen
 sht_data = wb.sheets.add('Daten')
 sht_data.range('A1').value = df
@@ -27,7 +27,7 @@ tbl.Name = "DatenTabelle"
 
 # Pivot-Table und Slicer erstellen
 sht_pivot = wb.sheets.add('Pivot-Tabelle')
-source_address = tbl.Range.Address  # Holen Sie sich die Adresse der Tabelle
+source_address = tbl.Range.Address  # Korrigiert: Verwendung der Eigenschaft Address
 pivot_cache = wb.api.PivotCaches().Create(SourceType=xw.constants.PivotTableSourceType.xlDatabase, SourceData=f"Daten!{source_address}")
 pivot_table = pivot_cache.CreatePivotTable(TableDestination=sht_pivot.range('A3').api, TableName="PivotTable1")
 
@@ -44,22 +44,33 @@ sht_dashboard.range('A1').value = "Produktivitäts-Dashboard"
 sht_dashboard.range('A1').font.size = 24
 sht_dashboard.range('A1').font.bold = True
 
-# Balkendiagramm erstellen
-chart = sht_dashboard.charts.add(250, 50)
-chart.chart_type = 'column_clustered'
-chart.set_source_data(sht_pivot.range('A3').expand('table'))
-chart.name = "Produktivitätsgrad nach Umlauf"
+# Diagramme erstellen
+chart1 = sht_dashboard.charts.add(left=10, top=50, width=300, height=200)
+chart1.chart_type = 'pie'
+chart1.set_source_data(sht_pivot.range('A3').expand('table'))
+
+chart2 = sht_dashboard.charts.add(left=320, top=50, width=300, height=200)
+chart2.chart_type = 'column_clustered'
+chart2.set_source_data(sht_pivot.range('A3').expand('table'))
+
+chart3 = sht_dashboard.charts.add(left=10, top=260, width=300, height=200)
+chart3.chart_type = 'bar_clustered'
+chart3.set_source_data(sht_pivot.range('A3').expand('table'))
+
+chart4 = sht_dashboard.charts.add(left=320, top=260, width=300, height=200)
+chart4.chart_type = 'line'
+chart4.set_source_data(sht_pivot.range('A3').expand('table'))
 
 # Slicer hinzufügen
 slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Umlauf")
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Umlauf", Caption="Umlauf", Top=30, Left=30, Width=100, Height=100)
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Umlauf", Caption="Umlauf", Top=470, Left=10, Width=100, Height=100)
 slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Schicht")
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Schicht", Caption="Schicht", Top=150, Left=30, Width=100, Height=100)
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Schicht", Caption="Schicht", Top=470, Left=120, Width=100, Height=100)
 slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Dienststelle")
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Dienststelle", Caption="Dienststelle", Top=270, Left=30, Width=100, Height=100)
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Dienststelle", Caption="Dienststelle", Top=470, Left=230, Width=100, Height=100)
 
 # Datei speichern
 wb.save(file_path)
 wb.close()
 
-print(f'Dynamisches Excel Dashboard mit Slicern erstellt und gespeichert in {file_path}')
+print(f'Professionelles Excel Dashboard mit Slicern erstellt und gespeichert in {file_path}')
