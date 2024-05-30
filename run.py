@@ -1,10 +1,9 @@
 import pandas as pd
-import plotly.express as px
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.drawing.image import Image
 from openpyxl.styles import PatternFill, Alignment, Font
 from openpyxl.formatting.rule import CellIsRule
+from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 
 # Beispieldaten erstellen
 data = {
@@ -17,12 +16,15 @@ data = {
 df = pd.DataFrame(data)
 
 # Excel-Datei erstellen
-file_path = 'professional_excel_dashboard.xlsx'
+file_path = 'dynamic_excel_dashboard_with_filter.xlsx'
 df.to_excel(file_path, index=False, sheet_name='Daten')
 
 # Arbeitsmappe laden
 wb = load_workbook(file_path)
 ws = wb.active
+
+# AutoFilter hinzufügen
+ws.auto_filter.ref = ws.dimensions
 
 # Pivot-Tabelle erstellen
 pivot_data = pd.pivot_table(df, values='Umsatz', index=['Produkt'], columns=['Region'], aggfunc='sum', fill_value=0)
@@ -30,38 +32,6 @@ pivot_ws = wb.create_sheet(title='Pivot-Tabelle')
 
 for r in dataframe_to_rows(pivot_data, index=True, header=True):
     pivot_ws.append(r)
-
-# Diagramme mit Plotly erstellen
-
-# Balkendiagramm
-fig_bar = px.bar(df.groupby('Datum')['Umsatz'].sum().reset_index(), x='Datum', y='Umsatz', title='Umsatz nach Monat',
-                 color_discrete_sequence=px.colors.qualitative.G10)
-fig_bar.update_layout(title_font_size=20, title_font_family='Arial', title_font_color='darkblue')
-fig_bar.write_image('bar_chart_plotly.png')
-
-# Kreisdiagramm
-fig_pie = px.pie(df, names='Produkt', values='Umsatz', title='Umsatzverteilung nach Produkt',
-                 color_discrete_sequence=px.colors.qualitative.G10)
-fig_pie.update_layout(title_font_size=20, title_font_family='Arial', title_font_color='darkblue')
-fig_pie.write_image('pie_chart_plotly.png')
-
-# Liniendiagramm
-fig_line = px.line(df, x='Datum', y='Umsatz', color='Produkt', markers=True, title='Umsatzentwicklung nach Produkt',
-                   color_discrete_sequence=px.colors.qualitative.G10)
-fig_line.update_layout(title_font_size=20, title_font_family='Arial', title_font_color='darkblue')
-fig_line.write_image('line_chart_plotly.png')
-
-# Diagramme in Excel einfügen
-charts = [
-    {'image': 'bar_chart_plotly.png', 'anchor': 'B10'},
-    {'image': 'pie_chart_plotly.png', 'anchor': 'B30'},
-    {'image': 'line_chart_plotly.png', 'anchor': 'B50'}
-]
-
-for chart in charts:
-    img = Image(chart['image'])
-    img.anchor = chart['anchor']
-    ws.add_image(img)
 
 # Formatierungen und Stile anwenden
 header_font = Font(name='Arial', bold=True, color='FFFFFF', size=14)
@@ -89,7 +59,35 @@ green_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='so
 pivot_ws.conditional_formatting.add('B2:C10', CellIsRule(operator='lessThan', formula=['150'], fill=red_fill))
 pivot_ws.conditional_formatting.add('B2:C10', CellIsRule(operator='greaterThanOrEqual', formula=['150'], fill=green_fill))
 
+# Dynamische Diagramme in Excel erstellen
+
+# Balkendiagramm erstellen
+bar_chart = BarChart()
+data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
+categories = Reference(ws, min_col=1, min_row=2, max_row=len(df) + 1)
+bar_chart.add_data(data, titles_from_data=True)
+bar_chart.set_categories(categories)
+bar_chart.title = "Umsatz nach Monat"
+ws.add_chart(bar_chart, "E10")
+
+# Liniendiagramm erstellen
+line_chart = LineChart()
+data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
+line_chart.add_data(data, titles_from_data=True)
+line_chart.set_categories(categories)
+line_chart.title = "Umsatzentwicklung nach Produkt"
+ws.add_chart(line_chart, "E30")
+
+# Kreisdiagramm erstellen
+pie_chart = PieChart()
+data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
+pie_chart.add_data(data, titles_from_data=True)
+categories = Reference(ws, min_col=2, min_row=2, max_row=len(df) + 1)
+pie_chart.set_categories(categories)
+pie_chart.title = "Umsatzverteilung nach Produkt"
+ws.add_chart(pie_chart, "E50")
+
 # Arbeitsmappe speichern
 wb.save(file_path)
 
-print(f'Professionelles Fluent Design Dashboard erstellt und gespeichert in {file_path}')
+print(f'Dynamisches Excel Dashboard mit Filter erstellt und gespeichert in {file_path}')
