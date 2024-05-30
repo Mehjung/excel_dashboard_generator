@@ -51,7 +51,8 @@ chart = sht_dashboard.charts.add(250, 50)
 chart.chart_type = 'column_clustered'
 chart.set_source_data(sht_pivot.range('A1').expand())
 chart.name = "Produktivitätsgrad nach Umlauf"
-chart.api[1].ChartTitle.Text = "Produktivitätsgrad nach Umlauf"
+chart.api.HasTitle = True
+chart.api.ChartTitle.Text = "Produktivitätsgrad nach Umlauf"
 
 # Slicer hinzufügen
 sht_pivot.range('A1').select()
