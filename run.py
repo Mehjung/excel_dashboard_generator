@@ -22,23 +22,21 @@ sht_data = wb.sheets.add('Daten')
 sht_data.range('A1').value = df
 
 # Sicherstellen, dass die Daten als Tabelle formatiert sind
-sht_data.range('A1').value = df.columns.tolist()  # Setzen der Spaltenüberschriften
-sht_data.range('A2').value = df.values.tolist()  # Setzen der Daten
 tbl = sht_data.api.ListObjects.Add(1, sht_data.range('A1').expand().api, None, 1)  # xlSrcRange = 1, xlYes = 1
 tbl.Name = "DatenTabelle"
 
 # Pivot-Table und Slicer erstellen
 sht_pivot = wb.sheets.add('Pivot-Tabelle')
-source_address = sht_data.range('A1').expand().address  # Holen Sie sich die Adresse der Tabelle
-pivot_cache = wb.api.PivotCaches().Create(SourceType=1, SourceData=f"Daten!{source_address}")  # xlDatabase = 1
-pivot_table = pivot_cache.CreatePivotTable(TableDestination=sht_pivot.range('A1').api, TableName="PivotTable1")
+source_address = tbl.Range.Address  # Holen Sie sich die Adresse der Tabelle
+pivot_cache = wb.api.PivotCaches().Create(SourceType=xw.constants.PivotTableSourceType.xlDatabase, SourceData=f"Daten!{source_address}")
+pivot_table = pivot_cache.CreatePivotTable(TableDestination=sht_pivot.range('A3').api, TableName="PivotTable1")
 
 # Pivot-Tabelle konfigurieren
-pivot_table.PivotFields("Umlauf").Orientation = 1  # xlRowField
-pivot_table.PivotFields("Schicht").Orientation = 1  # xlRowField
-pivot_table.PivotFields("Dienststelle").Orientation = 1  # xlRowField
-pivot_table.PivotFields("Datum").Orientation = 2  # xlColumnField
-pivot_table.AddDataField(pivot_table.PivotFields("Produktivitätsgrad"), "Durchschnittlicher Produktivitätsgrad", -4112)  # xlAverage
+pivot_table.PivotFields("Umlauf").Orientation = xw.constants.PivotFieldOrientation.xlRowField
+pivot_table.PivotFields("Schicht").Orientation = xw.constants.PivotFieldOrientation.xlRowField
+pivot_table.PivotFields("Dienststelle").Orientation = xw.constants.PivotFieldOrientation.xlRowField
+pivot_table.PivotFields("Datum").Orientation = xw.constants.PivotFieldOrientation.xlColumnField
+pivot_table.AddDataField(pivot_table.PivotFields("Produktivitätsgrad"), "Durchschnittlicher Produktivitätsgrad", xw.constants.ConsolidationFunction.xlAverage)
 
 # Dashboard-Blatt erstellen
 sht_dashboard = wb.sheets.add('Dashboard')
@@ -50,18 +48,14 @@ sht_dashboard.range('A1').font.bold = True
 chart = sht_dashboard.charts.add(250, 50)
 chart.chart_type = 'column_clustered'
 chart.set_source_data(sht_pivot.range('A1').expand())
-chart.name = "Produktivitätsgrad nach Umlauf"
-chart.api.HasTitle = True
-chart.api.ChartTitle.Text = "Produktivitätsgrad nach Umlauf"
 
 # Slicer hinzufügen
-sht_pivot.range('A1').select()
-slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Umlauf"))
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Umlauf", "Umlauf", 30, 30, 100, 100)
-slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Schicht"))
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Schicht", "Schicht", 30, 150, 100, 100)
-slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Dienststelle"))
-slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Dienststelle", "Dienststelle", 30, 270, 100, 100)
+slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Umlauf")
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Umlauf", Caption="Umlauf", Top=30, Left=30, Width=100, Height=100)
+slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Schicht")
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Schicht", Caption="Schicht", Top=150, Left=30, Width=100, Height=100)
+slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Dienststelle")
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, Name="Dienststelle", Caption="Dienststelle", Top=270, Left=30, Width=100, Height=100)
 
 # Datei speichern
 wb.save(file_path)
