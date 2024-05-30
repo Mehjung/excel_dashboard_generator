@@ -1,11 +1,9 @@
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.drawing.image import Image
-from openpyxl.workbook import Workbook
-from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
+from openpyxl.styles import PatternFill, Alignment, Font
 from openpyxl.formatting.rule import CellIsRule
 
 # Beispieldaten erstellen
