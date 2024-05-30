@@ -48,6 +48,7 @@ sht_dashboard.range('A1').font.bold = True
 chart = sht_dashboard.charts.add(250, 50)
 chart.chart_type = 'column_clustered'
 chart.set_source_data(sht_pivot.range('A1').expand())
+chart.name = "Produktivitätsgrad nach Umlauf"
 
 # Slicer hinzufügen
 slicer_cache = wb.api.SlicerCaches.Add2(sht_pivot.api.PivotTables("PivotTable1"), "Umlauf")
