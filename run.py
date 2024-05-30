@@ -47,7 +47,7 @@ sht_dashboard.range('A1').font.bold = True
 # Balkendiagramm erstellen
 chart = sht_dashboard.charts.add(250, 50)
 chart.chart_type = 'column_clustered'
-chart.set_source_data(sht_pivot.range('A1').expand())
+chart.set_source_data(sht_pivot.range('A3').expand('table'))
 chart.name = "Produktivitätsgrad nach Umlauf"
 
 # Slicer hinzufügen
