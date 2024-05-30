@@ -1,93 +1,69 @@
 import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import PatternFill, Alignment, Font
-from openpyxl.formatting.rule import CellIsRule
-from openpyxl.chart import BarChart, LineChart, PieChart, Reference
+import xlwings as xw
 
 # Beispieldaten erstellen
 data = {
-    'Datum': ['2024-01-01', '2024-01-01', '2024-02-01', '2024-02-01', '2024-03-01', '2024-03-01'],
-    'Produkt': ['Produkt A', 'Produkt B', 'Produkt A', 'Produkt B', 'Produkt A', 'Produkt B'],
-    'Region': ['Nord', 'Süd', 'Nord', 'Süd', 'Nord', 'Süd'],
-    'Umsatz': [100, 200, 150, 250, 200, 300]
+    'Datum': pd.date_range(start='2024-01-01', periods=20, freq='D').tolist(),
+    'Umlauf': ['Umlauf 1', 'Umlauf 2', 'Umlauf 3', 'Umlauf 4', 'Umlauf 5'] * 4,
+    'Schicht': ['Früh', 'Spät', 'Nacht', 'Früh', 'Spät', 'Nacht', 'Früh', 'Spät', 'Nacht', 'Früh',
+                'Früh', 'Spät', 'Nacht', 'Früh', 'Spät', 'Nacht', 'Früh', 'Spät', 'Nacht', 'Früh'],
+    'Dienststelle': ['FF', 'HH', 'M', 'B', 'S', 'FF', 'HH', 'M', 'B', 'S', 'FF', 'HH', 'M', 'B', 'S', 'FF', 'HH', 'M', 'B', 'S'],
+    'Schichtlänge': [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    'Pausenlänge': [30, 30, 30, 45, 45, 45, 15, 15, 15, 30, 30, 30, 45, 45, 45, 15, 15, 15, 30, 30],
+    'Produktivitätsgrad': [0.95, 0.85, 0.80, 0.90, 0.88, 0.92, 0.94, 0.91, 0.89, 0.87, 0.93, 0.90, 0.88, 0.85, 0.83, 0.92, 0.91, 0.89, 0.87, 0.86]
 }
 
 df = pd.DataFrame(data)
 
 # Excel-Datei erstellen
-file_path = 'dynamic_excel_dashboard_with_filter.xlsx'
-df.to_excel(file_path, index=False, sheet_name='Daten')
+file_path = 'dynamic_excel_dashboard_with_slicers.xlsx'
+wb = xw.Book()  # Neue Arbeitsmappe erstellen
+sht_data = wb.sheets.add('Daten')
+sht_data.range('A1').value = df
 
-# Arbeitsmappe laden
-wb = load_workbook(file_path)
-ws = wb.active
+# Sicherstellen, dass die Daten als Tabelle formatiert sind
+sht_data.range('A1').value = df.columns.tolist()  # Setzen der Spaltenüberschriften
+sht_data.range('A2').value = df.values.tolist()  # Setzen der Daten
+tbl = sht_data.api.ListObjects.Add(1, sht_data.range('A1').expand().api, None, 1)  # xlSrcRange = 1, xlYes = 1
+tbl.Name = "DatenTabelle"
 
-# AutoFilter hinzufügen
-ws.auto_filter.ref = ws.dimensions
+# Pivot-Table und Slicer erstellen
+sht_pivot = wb.sheets.add('Pivot-Tabelle')
+source_address = sht_data.range('A1').expand().address  # Holen Sie sich die Adresse der Tabelle
+pivot_cache = wb.api.PivotCaches().Create(SourceType=1, SourceData=f"Daten!{source_address}")  # xlDatabase = 1
+pivot_table = pivot_cache.CreatePivotTable(TableDestination=sht_pivot.range('A1').api, TableName="PivotTable1")
 
-# Pivot-Tabelle erstellen
-pivot_data = pd.pivot_table(df, values='Umsatz', index=['Produkt'], columns=['Region'], aggfunc='sum', fill_value=0)
-pivot_ws = wb.create_sheet(title='Pivot-Tabelle')
+# Pivot-Tabelle konfigurieren
+pivot_table.PivotFields("Umlauf").Orientation = 1  # xlRowField
+pivot_table.PivotFields("Schicht").Orientation = 1  # xlRowField
+pivot_table.PivotFields("Dienststelle").Orientation = 1  # xlRowField
+pivot_table.PivotFields("Datum").Orientation = 2  # xlColumnField
+pivot_table.AddDataField(pivot_table.PivotFields("Produktivitätsgrad"), "Durchschnittlicher Produktivitätsgrad", -4112)  # xlAverage
 
-for r in dataframe_to_rows(pivot_data, index=True, header=True):
-    pivot_ws.append(r)
-
-# Formatierungen und Stile anwenden
-header_font = Font(name='Arial', bold=True, color='FFFFFF', size=14)
-header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-cell_alignment = Alignment(horizontal='center', vertical='center')
-
-for cell in ws['1:1']:
-    cell.font = header_font
-    cell.fill = header_fill
-    cell.alignment = cell_alignment
-
-# Zusätzliche Formatierung für Pivot-Tabelle
-pivot_ws['A1'].font = Font(bold=True)
-pivot_ws['B1'].font = Font(bold=True)
-pivot_ws['C1'].font = Font(bold=True)
-for cell in pivot_ws['A:A']:
-    cell.font = Font(bold=True)
-pivot_ws['A1'].fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-pivot_ws['B1'].fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-pivot_ws['C1'].fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-
-# Bedingte Formatierung hinzufügen
-red_fill = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
-green_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
-pivot_ws.conditional_formatting.add('B2:C10', CellIsRule(operator='lessThan', formula=['150'], fill=red_fill))
-pivot_ws.conditional_formatting.add('B2:C10', CellIsRule(operator='greaterThanOrEqual', formula=['150'], fill=green_fill))
-
-# Dynamische Diagramme in Excel erstellen
+# Dashboard-Blatt erstellen
+sht_dashboard = wb.sheets.add('Dashboard')
+sht_dashboard.range('A1').value = "Produktivitäts-Dashboard"
+sht_dashboard.range('A1').font.size = 24
+sht_dashboard.range('A1').font.bold = True
 
 # Balkendiagramm erstellen
-bar_chart = BarChart()
-data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
-categories = Reference(ws, min_col=1, min_row=2, max_row=len(df) + 1)
-bar_chart.add_data(data, titles_from_data=True)
-bar_chart.set_categories(categories)
-bar_chart.title = "Umsatz nach Monat"
-ws.add_chart(bar_chart, "E10")
+chart = sht_dashboard.charts.add(250, 50)
+chart.chart_type = 'column_clustered'
+chart.set_source_data(sht_pivot.range('A1').expand())
+chart.name = "Produktivitätsgrad nach Umlauf"
+chart.api[1].ChartTitle.Text = "Produktivitätsgrad nach Umlauf"
 
-# Liniendiagramm erstellen
-line_chart = LineChart()
-data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
-line_chart.add_data(data, titles_from_data=True)
-line_chart.set_categories(categories)
-line_chart.title = "Umsatzentwicklung nach Produkt"
-ws.add_chart(line_chart, "E30")
+# Slicer hinzufügen
+sht_pivot.range('A1').select()
+slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Umlauf"))
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Umlauf", "Umlauf", 30, 30, 100, 100)
+slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Schicht"))
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Schicht", "Schicht", 30, 150, 100, 100)
+slicer_cache = wb.api.SlicerCaches.Add(pivot_table, pivot_table.PivotFields("Dienststelle"))
+slicer = slicer_cache.Slicers.Add(sht_dashboard.api, "", "Dienststelle", "Dienststelle", 30, 270, 100, 100)
 
-# Kreisdiagramm erstellen
-pie_chart = PieChart()
-data = Reference(ws, min_col=4, min_row=1, max_col=4, max_row=len(df) + 1)
-pie_chart.add_data(data, titles_from_data=True)
-categories = Reference(ws, min_col=2, min_row=2, max_row=len(df) + 1)
-pie_chart.set_categories(categories)
-pie_chart.title = "Umsatzverteilung nach Produkt"
-ws.add_chart(pie_chart, "E50")
-
-# Arbeitsmappe speichern
+# Datei speichern
 wb.save(file_path)
+wb.close()
 
-print(f'Dynamisches Excel Dashboard mit Filter erstellt und gespeichert in {file_path}')
+print(f'Dynamisches Excel Dashboard mit Slicern erstellt und gespeichert in {file_path}')
